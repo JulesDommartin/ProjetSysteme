@@ -9,7 +9,7 @@
 int cd(char* arg);
 
 // Implémentation de echo
-int echo(char* mots);
+int echo(char** mots);
 
 // Exécute une commande interne
 int commande_interne(ligne_analysee_t* ligne_analysee);

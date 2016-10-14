@@ -9,9 +9,8 @@
 void lit_ligne(ligne_analysee_t *ligne_analysee)
 {
 	// lecture de la ligne de commande
-	// si un fils en arrière-plan est terminé, je dois relancer le fgets
-	while (! fgets(ligne_analysee->ligne,sizeof(ligne_analysee->ligne)-1,stdin) ) {
-		// si Ctrl-d est tapé (i.e. EOF), alors on sort du programme
+	while (!fgets(ligne_analysee->ligne,sizeof(ligne_analysee->ligne)-1,stdin)) {
+		// si Ctrl-d est tapé, alors on sort du mini-shell
 		if (feof(stdin)) {
 			printf("\n");
 			exit(0);
@@ -19,75 +18,62 @@ void lit_ligne(ligne_analysee_t *ligne_analysee)
 	}
 }
 
-int decoupe_commande(char **a_debut, ligne_analysee_t *ligne_analysee){
-   int isfg=1;
-   int i;
+void decoupe_commande(char **a_debut, ligne_analysee_t *ligne_analysee){
+	int i;
+	// début de la commande à découper
+	char *debut = *a_debut;
 
-   // début de la commande numéro num_comm à découper
-   char *debut = *a_debut;
+	for (i=0; i<NB_MAX_MOTS-1 ;i++)
+	{
+	  // fin de ligne 
+	  if (!*debut)
+		  break;
 
-   // on met le mot numéro i dans la case numéro i de commandes[num_comm]
-   for (i=0; i<NB_MAX_MOTS-1 ;i++) // on laisse la place pour le NULL final
-   {
-      /* saute les espaces */
-      while (*debut && isspace(*debut)) debut++;
+	  // pipe inattendu 
+	  if (*debut=='|') {
+		 printf("Erreur : caractère | inattendu\n"); exit(EXIT_FAILURE);
+	  }
 
-      /* fin de ligne ? */
-      if (!*debut)
-          break;
+	  // stocke le début du mot numéro i
+	  ligne_analysee->commandes[ligne_analysee->nb_fils][i]=debut;
 
-      /* pipe inattendu ? */
-      if (*debut=='|') {
-         printf("Erreur : caractère | inattendu\n"); exit(EXIT_FAILURE);
-      }
+	  // cherche la fin du mot
+	  while (*debut && !isspace(*debut) && *debut != '|') debut++;
 
-      /* stocke le début du mot numéro i*/
-      ligne_analysee->commandes[ligne_analysee->nb_fils][i]=debut;
+	  // entre deux arguments
+	  if (*debut && isspace(*debut)) {
+		  *debut='\0';
+		  debut++;
+		 while (*debut && isspace(*debut)) debut++;
+	  }
 
-      /* cherche la fin du mot numéro i*/
-      while (*debut && !isspace(*debut) && *debut != '|') debut++;
+	  // entre deux commandes
+	  if (*debut == '|') {
+		  *debut='\0';
+		  debut++; i++;
+		 break;
+	  }
 
-      /* est-on entre deux arguments? */
-      if (*debut && isspace(*debut)) {
-          *debut='\0';
-          debut++;
-         while (*debut && isspace(*debut)) debut++;
-      }
+	}
+	
+	*a_debut = debut;
 
-      /* est-on entre deux commandes? */
-      if (*debut == '|') {
-          *debut='\0';
-          debut++; i++;
-         break;
-      }
+	//  NULL pour execvp 
+	ligne_analysee->commandes[ligne_analysee->nb_fils][i] = NULL;
 
-   }/* fin du parcours des arguments de la commande numéro num_comm*/
-
-   /* renvoie où l'on s'est arrêté*/
-   *a_debut = debut;
-
-   /* on n'oublie pas l'élément NULL pour execvp */
-   ligne_analysee->commandes[ligne_analysee->nb_fils][i] = NULL;
-
-   /* pour tester si le dernier mot est &*/
-   if (i>0 && strcmp("&",ligne_analysee->commandes[ligne_analysee->nb_fils][i-1])==0)
-   {
-     ligne_analysee->commandes[ligne_analysee->nb_fils][i-1] = NULL;
-     isfg=0;
-   }
-
-   return isfg;
+	// test pour & (background)
+	if (i>0 && strcmp("&",ligne_analysee->commandes[ligne_analysee->nb_fils][i-1])==0)
+	{
+	 ligne_analysee->commandes[ligne_analysee->nb_fils][i-1] = NULL;
+	}
 }
 
-int extrait_commande(ligne_analysee_t *ligne_analysee) {
-	int isfg=1;
+void extrait_commande(ligne_analysee_t *ligne_analysee) {
 	char* debut = ligne_analysee->ligne;
 
 	ligne_analysee->nb_fils=0;
 	while (ligne_analysee->nb_fils<NB_MAX_COMMANDES && *debut) {
-		isfg=decoupe_commande(&debut,ligne_analysee);
+		decoupe_commande(&debut,ligne_analysee);
 		ligne_analysee->nb_fils++;
 	}
-
-	return isfg;
 }

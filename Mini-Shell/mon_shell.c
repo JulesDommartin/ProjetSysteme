@@ -2,11 +2,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 
 #include "internes.h"
 #include "ligne.h"
 #include "externes.h"
 
+
+
+// A envoyer à Philippe.Bidimger@imag.fr
+// Sujet: [MIAGE]Gueze/Dommartin
+// Avant jeudi 20 octobre 23h59
+
+static ensemble_job_t jobs;
 
 // Affiche l'invite de commande
 void affiche_invite(void) {
@@ -22,16 +30,17 @@ void affiche_invite(void) {
 	fflush(stdout);
 }
 
-static void execute_ligne(ligne_analysee_t *ligne_analysee) {
+static void execute_ligne(ligne_analysee_t *ligne_analysee, ensemble_job_t *jobs) {
 
+	
 	extrait_commande(ligne_analysee);
 
 	// s'il ne s'agit pas d'une commande interne au shell,
 	// la ligne est exécutée par un ou des fils
 	if (! commande_interne(ligne_analysee) ) {
+		job_t *job = jobs->jobs;
 		// fait exécuter les commandes de la ligne par des fils
-		executer_commandes(ligne_analysee);
-
+		executer_commandes(job, ligne_analysee);
 	}
 
 	// ménage
@@ -42,11 +51,12 @@ static void execute_ligne(ligne_analysee_t *ligne_analysee) {
 int main(void){
 
 	ligne_analysee_t ligne;
+	initialiser_jobs(&jobs);
 
 	while(1) {
 		affiche_invite();
 		lit_ligne(&ligne);
-		execute_ligne(&ligne);
+		execute_ligne(&ligne, &jobs);
 	}
 	
 	return 0;

@@ -16,9 +16,9 @@ typedef struct ligne_analysee_t
 void lit_ligne(ligne_analysee_t *ligne_analysee);
 
 // fonction qui découpe la commande
-int decoupe_commande(char **a_debut, ligne_analysee_t *ligne_analysee);
+void decoupe_commande(char **a_debut, ligne_analysee_t *ligne_analysee);
 
 // fonction qui extrait chaque ligne de commande
-int extrait_commande(ligne_analysee_t *ligne_analysee);
+void extrait_commande(ligne_analysee_t *ligne_analysee);
 
 #endif
