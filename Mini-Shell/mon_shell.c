@@ -3,10 +3,13 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <signal.h>
 
 #include "internes.h"
 #include "ligne.h"
 #include "externes.h"
+#include "job.h"
+#include "mon_shell.h"
 
 
 
@@ -30,33 +33,69 @@ void affiche_invite(void) {
 	fflush(stdout);
 }
 
-static void execute_ligne(ligne_analysee_t *ligne_analysee, ensemble_job_t *jobs) {
+// Execute une ligne de commande
+int execute_ligne(ligne_analysee_t *ligne_analysee, ensemble_job_t *jobs, struct sigaction *sigact) {
 
+	if (extrait_commande(ligne_analysee) == -1) {
+		return -1;
+	} else {
 	
-	extrait_commande(ligne_analysee);
-
-	// s'il ne s'agit pas d'une commande interne au shell,
-	// la ligne est exécutée par un ou des fils
-	if (! commande_interne(ligne_analysee) ) {
-		job_t *job = jobs->jobs;
-		// fait exécuter les commandes de la ligne par des fils
-		executer_commandes(job, ligne_analysee);
+		// S'il ne s'agit pas d'une commande interne au shell,
+		// La ligne est exécutée par un ou des fils
+		if (! commande_interne(ligne_analysee) ) {
+			job_t *job = jobs->jobs;
+		
+			// Suspension des signaux
+			sigact->sa_handler = SIG_IGN;
+			sigaction(SIGINT, sigact, NULL);
+			// Exécute les commandes de la ligne par des fils
+			executer_commandes(job, ligne_analysee, sigact);
+			// Rétablissement des signaux
+			initialiser_signaux(sigact);
+		}
+		
+		
+		// ménage
+		*ligne_analysee->ligne='\0';
+		return 0;
 	}
-
-	// ménage
-	*ligne_analysee->ligne='\0';
 }
 
+// Traitement des signaux
+void traitement_signal(int sig) {
+	switch(sig) {
+		//
+		case SIGINT:
+			printf("\n");
+			affiche_invite();
+			break;
+		default:
+			printf("Signal non traité");
+	}
+}
+
+// Initialise la gestion des signaux avec la structure sigaction
+void initialiser_signaux(struct sigaction *sigact) {
+	sigact->sa_flags=0;
+	sigemptyset(&sigact->sa_mask);
+	
+	sigact->sa_handler = traitement_signal;
+	
+	sigaction(SIGINT, sigact, NULL);
+}
 
 int main(void){
 
+	struct sigaction sigact;
 	ligne_analysee_t ligne;
+	
 	initialiser_jobs(&jobs);
+	initialiser_signaux(&sigact);
 
 	while(1) {
 		affiche_invite();
 		lit_ligne(&ligne);
-		execute_ligne(&ligne, &jobs);
+		execute_ligne(&ligne, &jobs, &sigact);
 	}
 	
 	return 0;
