@@ -9,7 +9,7 @@
 #include "externes.h"
 #include "ligne.h"
 
-void executer_commande_dans_un_fils(job_t* job, int numero_commande, ligne_analysee_t* ligne_analysee, struct sigaction *sigact) {
+void executer_commande_dans_un_fils(job_t* job, int numero_commande, ligne_analysee_t* ligne_analysee, struct sigaction *sigact, int is_background) {
 	
 	// On regarde s'il faut un tube pour la sortie et/out l'entrée
 	// Il faut que le numero de commande ne soit pas le dernier et qu'il y ai au moins 2 commandes
@@ -49,8 +49,10 @@ void executer_commande_dans_un_fils(job_t* job, int numero_commande, ligne_analy
 		}
 		
 		// On restore le traitement par défaut de SIGINT
-		sigact->sa_handler = SIG_DFL;
-		sigaction(SIGINT,sigact,NULL);
+		if (!is_background) {
+			sigact->sa_handler = SIG_DFL;
+			sigaction(SIGINT,sigact,NULL);
+		}
 		
 		int res_e=execvp(ligne_analysee->commandes[numero_commande][0],ligne_analysee->commandes[numero_commande]);
 		if (res_e==-1) {
@@ -70,20 +72,22 @@ void executer_commande_dans_un_fils(job_t* job, int numero_commande, ligne_analy
 }
 
 //Exécute les commandes externes
-void executer_commandes(job_t* job, ligne_analysee_t* ligne_analysee, struct sigaction *sigact) {
+void executer_commandes(job_t* job, ligne_analysee_t* ligne_analysee, struct sigaction *sigact, int is_background) {
 
 	strcpy(job->nom,ligne_analysee->ligne);
 
 	// On execute une commande pour chaque commande de la ligne
 	for (int i = 0; i < ligne_analysee->nb_fils; i++) {
 		// on lance l'exécution de la commande dans un fils
-		executer_commande_dans_un_fils(job,i,ligne_analysee, sigact);
+		executer_commande_dans_un_fils(job,i,ligne_analysee, sigact, is_background);
 	}
 
-	// Le waitpid permet d'attendre la fin d'une commande pour débuter la suivante
-	for (int i = 0; i < ligne_analysee->nb_fils; i++) {
-		// On attend la fin de la commande, dans l'ordre du lancement
-		waitpid(job->pids[i], NULL, 0);
+	if (!is_background) {
+		// Le waitpid permet d'attendre la fin d'une commande pour débuter la suivante
+		for (int i = 0; i < ligne_analysee->nb_fils; i++) {
+			// On attend la fin de la commande, dans l'ordre du lancement
+			waitpid(job->pids[i], NULL, 0);
+		}
 	}
 
 	// on ne se sert plus de la ligne : ménage

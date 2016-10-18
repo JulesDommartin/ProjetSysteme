@@ -24,5 +24,3 @@ void exec_job(job_t job, int signal) {
 		}
 	}
 }
-
-

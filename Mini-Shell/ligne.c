@@ -71,21 +71,22 @@ int decoupe_commande(char **a_debut, ligne_analysee_t *ligne_analysee){
 		// test pour & (background)
 		if (i>0 && strcmp("&",ligne_analysee->commandes[ligne_analysee->nb_fils][i-1])==0)
 		{
-		 ligne_analysee->commandes[ligne_analysee->nb_fils][i-1] = NULL;
+		 	ligne_analysee->commandes[ligne_analysee->nb_fils][i-1] = NULL;
+		 	return 1;
 		}
-		return 1;
+		return 0;
 	}
 }
 
 int extrait_commande(ligne_analysee_t *ligne_analysee) {
 	char* debut = ligne_analysee->ligne;
-
+	int is_background = 0;
 	ligne_analysee->nb_fils=0;
 	while (ligne_analysee->nb_fils<NB_MAX_COMMANDES && *debut) {
-		if (decoupe_commande(&debut,ligne_analysee) == -1) {
-			return -1;
+		if ((is_background = decoupe_commande(&debut,ligne_analysee)) == -1) {
+			return is_background;
 		}
 		ligne_analysee->nb_fils++;
 	}
-	return 0;
+	return is_background;
 }
